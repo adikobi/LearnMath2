@@ -1,28 +1,74 @@
-// Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Screen Elements ---
-    const splashScreen = document.getElementById('splash-screen');
-    const participantSelectionScreen = document.getElementById('participant-selection-screen');
-
-    // --- Feedback Elements ---
+    // --- Elements ---
+    const screens = document.querySelectorAll('.screen');
     const feedbackOverlay = document.getElementById('feedback-overlay');
     const feedbackText = document.getElementById('feedback-text');
     const feedbackEmoji = document.getElementById('feedback-emoji');
 
-    let gameState = {
+    // --- Game State ---
+    const gameState = {
         participant: null,
-        number: null,
+        targetNumber: null,
+        mathProblem: {},
+        heartsGame: {},
+        level: 0
     };
 
-    // --- Screen Management ---
+    // --- Speech Synthesis ---
+    const synth = window.speechSynthesis;
+    let voices = [];
+    const heartColors = {
+        red: '❤️',
+        blue: '💙',
+        green: '💚',
+        yellow: '💛'
+    };
+
+    function populateVoiceList() {
+        if (!synth) return;
+        voices = synth.getVoices().filter(voice => voice.lang.startsWith('he'));
+    }
+
+    populateVoiceList();
+    if (synth && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    function speak(text, rate = 0.9, pitch = 1.1) {
+        if (!synth) {
+            console.warn("Speech Synthesis not supported, skipping speak().");
+            return;
+        }
+        if (synth.speaking) {
+            console.error('SpeechSynthesis is already speaking.');
+            return;
+        }
+        const utterThis = new SpeechSynthesisUtterance(text);
+        utterThis.onend = () => {
+            console.log('SpeechSynthesisUtterance.onend');
+        };
+        utterThis.onerror = (event) => {
+            console.error('SpeechSynthesisUtterance.onerror', event);
+        };
+
+        // Use a Hebrew voice if available
+        if (voices.length > 0) {
+            utterThis.voice = voices[0];
+        } else {
+            utterThis.lang = 'he-IL';
+        }
+
+        utterThis.pitch = pitch;
+        utterThis.rate = rate;
+        synth.speak(utterThis);
+    }
+
+    // --- Core Functions ---
     function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
+        screens.forEach(screen => screen.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
     }
 
-    // --- Feedback System ---
     function showFeedback(text, emoji, duration = 2000, isSuccess = false) {
         return new Promise(resolve => {
             feedbackText.textContent = text;
@@ -30,104 +76,84 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackOverlay.classList.add('visible');
 
             if (isSuccess && typeof confetti === 'function') {
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 }
-                });
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             }
 
             setTimeout(() => {
                 feedbackOverlay.classList.remove('visible');
-                // Wait for animation to finish before resolving
                 setTimeout(resolve, 300);
             }, duration);
         });
     }
 
-    // --- Splash Screen Logic ---
-    setTimeout(() => {
-        showScreen('participant-selection-screen');
-    }, 3000); // 3 seconds delay
+    // --- Game Stage Functions ---
+    function startFindTheNumber() {
+        // 1. Setup game state
+        gameState.targetNumber = Math.floor(Math.random() * 10);
+        console.log(`Target number: ${gameState.targetNumber}`);
 
-    // --- Participant Selection Logic ---
-    const participantCards = document.querySelectorAll('.participant-card');
-    participantCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const participantName = card.dataset.participant;
-            gameState.participant = participantName;
-            startGame_FindTheNumber();
-        });
-    });
-
-    // --- Game 1: Find the Number ---
-    const numberContainer = document.getElementById('number-container');
-    const speakButton = document.getElementById('speak-button');
-    const showCardButton = document.getElementById('show-card-button');
-
-    function startGame_FindTheNumber() {
-        gameState.number = Math.floor(Math.random() * 10);
-        console.log(`The target number is: ${gameState.number}`);
-
+        // 2. Populate the game area with numbers
+        const numberContainer = document.getElementById('number-container');
         numberContainer.innerHTML = '';
         for (let i = 0; i <= 9; i++) {
+            const numberDiv = document.createElement('div');
+            numberDiv.classList.add('number-image');
+            numberDiv.dataset.number = i;
+
             const img = document.createElement('img');
             img.src = `assets/${gameState.participant}/${i}.jpg`;
-            img.classList.add('number-image');
-            img.dataset.number = i;
+            numberDiv.appendChild(img);
 
-            img.style.top = `${Math.random() * 80}%`;
-            img.style.left = `${Math.random() * 80}%`;
-            const duration = 10 + Math.random() * 10;
-            const delay = Math.random() * 5;
-            img.style.animationDuration = `${duration}s`;
-            img.style.animationDelay = `-${delay}s`;
+            // Randomize position and animation
+            numberDiv.style.top = `${Math.random() * 85}%`;
+            numberDiv.style.left = `${Math.random() * 85}%`;
+            numberDiv.style.animationDuration = `${10 + Math.random() * 10}s`;
+            numberDiv.style.animationDelay = `-${Math.random() * 5}s`;
 
-            img.addEventListener('click', handleNumberClick);
-            numberContainer.appendChild(img);
+            numberDiv.addEventListener('click', handleNumberClick);
+            numberContainer.appendChild(numberDiv);
         }
 
+        // 3. Show screen and speak the number
         showScreen('find-the-number-screen');
-        speakNumber();
+        setTimeout(() => speak(String(gameState.targetNumber)), 500);
     }
 
     async function handleNumberClick(event) {
-        const clickedEl = event.target;
+        const clickedEl = event.currentTarget;
         const clickedNumber = parseInt(clickedEl.dataset.number);
 
-        if (clickedNumber === gameState.number) {
+        if (clickedNumber === gameState.targetNumber) {
             await showFeedback('כל הכבוד!', '🎉', 1500, true);
-            startGame_MathProblems();
+            startMathProblems();
         } else {
             clickedEl.style.animation = 'shake 0.5s';
             await showFeedback('אופס, נסה שוב', '🤔', 1500);
-            clickedEl.style.animation = ''; // Reset animation
+            clickedEl.style.animation = 'drift 15s infinite linear alternate'; // Resume drifting
         }
     }
 
-    function speakNumber() {
-        showFeedback(`המספר הוא... ${gameState.number}`, '🔊', 1500);
-    }
-
-    speakButton.addEventListener('click', speakNumber);
-
-    showCardButton.addEventListener('click', () => {
-        showFeedback(`המספר הוא: ${gameState.number}`, '🃏', 2000);
+    // Hint buttons logic
+    document.getElementById('speak-button').addEventListener('click', () => {
+        speak(String(gameState.targetNumber));
     });
 
-    // --- Game 2: Math Problems ---
-    const numberPad = document.getElementById('number-pad');
-    const mathProblemEl = document.getElementById('math-problem');
-    const userAnswerEl = document.getElementById('user-answer');
+    document.getElementById('show-card-button').addEventListener('click', () => {
+        showFeedback(`${gameState.targetNumber}`, '🃏', 2000);
+    });
 
-    let mathState = {
-        correctAnswer: 0,
-        userAnswer: '',
-        questionsSolved: 0
-    };
+
+    function startMathProblems() {
+        gameState.mathProblem = { questionsSolved: 0 };
+        setupNumberPad();
+        generateMathProblem();
+        showScreen('math-problems-screen');
+    }
 
     function setupNumberPad() {
-        if (numberPad.children.length > 0) return;
+        const numberPad = document.getElementById('number-pad');
+        if (numberPad.children.length > 0) return; // Setup only once
+
         for (let i = 0; i <= 9; i++) {
             const img = document.createElement('img');
             img.src = `assets/${gameState.participant}/${i}.jpg`;
@@ -138,25 +164,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function startGame_MathProblems() {
-        setupNumberPad();
-        mathState.questionsSolved = 0;
-        generateMathProblem();
-        showScreen('math-problems-screen');
-    }
-
     function generateMathProblem() {
-        let num = gameState.number;
+        let num = gameState.targetNumber;
         let otherNum = Math.floor(Math.random() * 10);
         const isAddition = Math.random() > 0.5;
         let problemText, answer;
 
-        if (mathState.questionsSolved === 0) {
+        if (gameState.mathProblem.questionsSolved === 0) {
             if (isAddition) {
                 problemText = `${num} + ${otherNum} = ?`;
                 answer = num + otherNum;
             } else {
-                if (num < otherNum) [num, otherNum] = [otherNum, num];
+                if (num < otherNum) [num, otherNum] = [otherNum, num]; // Ensure positive result
                 problemText = `${num} - ${otherNum} = ?`;
                 answer = num - otherNum;
             }
@@ -165,189 +184,254 @@ document.addEventListener('DOMContentLoaded', () => {
                 problemText = `${otherNum} + ${num} = ?`;
                 answer = otherNum + num;
             } else {
-                if (otherNum < num) otherNum = num + Math.floor(Math.random() * 5);
+                if (otherNum < num) otherNum = num + Math.floor(Math.random() * 5) + 1; // Ensure positive result
                 problemText = `${otherNum} - ${num} = ?`;
                 answer = otherNum - num;
             }
         }
 
-        mathState.correctAnswer = answer;
-        mathState.userAnswer = '';
-        mathProblemEl.textContent = problemText;
-        userAnswerEl.textContent = '';
+        gameState.mathProblem.correctAnswer = answer;
+        gameState.mathProblem.userAnswer = '';
+        document.getElementById('math-problem').textContent = problemText;
+        document.getElementById('answer-container').innerHTML = '';
     }
 
     function handleNumpadClick(event) {
         const digit = event.target.dataset.number;
-        mathState.userAnswer += digit;
-        userAnswerEl.textContent = mathState.userAnswer;
+        gameState.mathProblem.userAnswer += digit;
 
-        if (mathState.userAnswer.length === String(mathState.correctAnswer).length) {
+        // Display the answer as an image
+        const answerContainer = document.getElementById('answer-container');
+        const img = document.createElement('img');
+        img.src = event.target.src;
+        img.classList.add('answer-image');
+        answerContainer.appendChild(img);
+
+        // Check if the answer is complete
+        if (gameState.mathProblem.userAnswer.length === String(gameState.mathProblem.correctAnswer).length) {
             checkMathAnswer();
         }
     }
 
     async function checkMathAnswer() {
-        if (parseInt(mathState.userAnswer) === mathState.correctAnswer) {
-            await showFeedback('תשובה נכונה!', '✅', 1500, true);
-            mathState.questionsSolved++;
+        const userAnswer = parseInt(gameState.mathProblem.userAnswer);
+        if (userAnswer === gameState.mathProblem.correctAnswer) {
+            gameState.mathProblem.questionsSolved++;
 
-            if (mathState.questionsSolved >= 2) {
-                await showFeedback('מעולה! סיימת את שלב החשבון!', '🏆', 2000, true);
-                startGame_CollectHearts();
+            if (gameState.mathProblem.questionsSolved >= 2) {
+                await showFeedback('מעולה!', '🏆', 2000, true);
+                startCollectHearts();
             } else {
+                await showFeedback('✅', '', 1500, true);
                 generateMathProblem();
             }
         } else {
-            await showFeedback('תשובה לא נכונה, נסה שוב', '❌', 1500);
-            mathState.userAnswer = '';
-            userAnswerEl.textContent = '';
+            await showFeedback('אופס, נסה שוב', '❌', 1500);
+            gameState.mathProblem.userAnswer = '';
+            document.getElementById('answer-container').innerHTML = '';
         }
     }
 
-    // --- Game 3: Collect Hearts ---
-    const heartsGameArea = document.getElementById('hearts-game-area');
-    const collectedHeartsContainer = document.getElementById('collected-hearts-container');
-    const heartsInstruction = document.getElementById('hearts-instruction');
-    const finishHeartsButton = document.getElementById('finish-hearts-button');
+    function startCollectHearts() {
+        const heartsGameArea = document.getElementById('hearts-game-area');
+        const instructionEl = document.getElementById('hearts-instruction');
 
-    const heartColors = { red: '❤️', blue: '💙', green: '💚', yellow: '💛' };
-    const colorNames = { red: 'אדומים', blue: 'כחולים', green: 'ירוקים', yellow: 'צהובים' };
+        // 1. Setup game state
+        gameState.heartsGame = {
+            targetColor: Object.keys(heartColors)[Math.floor(Math.random() * Object.keys(heartColors).length)],
+            targetCount: gameState.targetNumber === 0 ? 1 : gameState.targetNumber,
+        };
 
-    let heartsState = { targetColor: '', targetCount: 0 };
+        // 2. Update instruction with emoji
+        instructionEl.innerHTML = `אסוף ${gameState.heartsGame.targetCount} לבבות ${heartColors[gameState.heartsGame.targetColor]}`;
 
-    function startGame_CollectHearts() {
-        heartsState.targetCount = gameState.number === 0 ? 1 : gameState.number; // Can't collect 0 hearts
-        const availableColors = Object.keys(heartColors);
-        heartsState.targetColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-
-        heartsInstruction.innerHTML = `אסוף <span style="color:${heartsState.targetColor}">${heartsState.targetCount}</span> לבבות בצבע <span style="color:${heartsState.targetColor}">${colorNames[heartsState.targetColor]}</span>`;
+        // 3. Clear previous game elements
         heartsGameArea.innerHTML = '';
-        collectedHeartsContainer.innerHTML = '';
+        document.getElementById('collected-hearts-container').innerHTML = '';
 
-        const totalHearts = 25;
-        for (let i = 0; i < totalHearts; i++) {
-            const color = availableColors[Math.floor(Math.random() * availableColors.length)];
-            createHeart(color, heartsGameArea);
-        }
+        // 4. Generate raining hearts
+        if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);
+        gameState.heartsGame.rainInterval = setInterval(() => {
+            createFallingHeart(heartsGameArea);
+        }, 400);
+
         showScreen('collect-hearts-screen');
     }
 
-    function createHeart(color, container) {
+    function createFallingHeart(container) {
+        const availableColors = Object.keys(heartColors);
+        const color = availableColors[Math.floor(Math.random() * availableColors.length)];
+
         const heart = document.createElement('div');
         heart.classList.add('heart');
         heart.textContent = heartColors[color];
         heart.dataset.color = color;
 
-        if (container === heartsGameArea) {
-            heart.style.top = `${Math.random() * 85}%`;
-            heart.style.left = `${Math.random() * 90}%`;
-            heart.style.animationDelay = `-${Math.random() * 10}s`;
-            heart.addEventListener('click', handleHeartClick);
-        } else {
-            heart.classList.remove('heart');
-            heart.classList.add('collected-heart');
-            heart.addEventListener('click', handleCollectedHeartClick);
-        }
+        heart.style.left = `${Math.random() * 95}%`;
+        heart.style.animationDuration = `${3 + Math.random() * 3}s`;
+
+        heart.addEventListener('click', handleHeartCollect, { once: true });
+        heart.addEventListener('animationend', () => heart.remove());
+
         container.appendChild(heart);
     }
 
-    function handleHeartClick(event) {
-        const heart = event.target;
-        heart.remove();
-        createHeart(heart.dataset.color, collectedHeartsContainer);
+    function handleHeartCollect(event) {
+        const heartEl = event.target;
+        const color = heartEl.dataset.color;
+
+        const collectedContainer = document.getElementById('collected-hearts-container');
+        const collectedHeart = document.createElement('div');
+        collectedHeart.classList.add('collected-heart');
+        collectedHeart.textContent = heartColors[color];
+        collectedHeart.dataset.color = color;
+
+        collectedHeart.addEventListener('click', (e) => e.target.remove(), { once: true });
+        collectedContainer.appendChild(collectedHeart);
+
+        heartEl.remove();
     }
 
-    function handleCollectedHeartClick(event) {
-        const heart = event.target;
-        heart.remove();
-        createHeart(heart.dataset.color, heartsGameArea);
-    }
+    function startDrawTheNumber() {
+        const canvas = document.getElementById('drawing-canvas');
+        const ctx = canvas.getContext('2d');
+        const traceImage = document.getElementById('trace-image');
+        let isDrawing = false;
+        let hue = 0;
 
-    finishHeartsButton.addEventListener('click', async () => {
-        const collected = collectedHeartsContainer.children;
-        let correctColorCount = 0;
-        let wrongColorCount = 0;
+        // 1. Setup
+        document.getElementById('draw-instruction').textContent = `עכשיו, בוא נצייר את המספר ${gameState.targetNumber}!`;
+        traceImage.src = `assets/${gameState.participant}/${gameState.targetNumber}.jpg`;
 
-        for (const heart of collected) {
-            if (heart.dataset.color === heartsState.targetColor) correctColorCount++;
-            else wrongColorCount++;
+        // 2. Canvas setup
+        function setupCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 10;
         }
 
-        if (wrongColorCount === 0 && correctColorCount === heartsState.targetCount) {
-            await showFeedback('נהדר!', '💖', 1500, true);
-            startGame_DrawTheNumber();
-        } else {
-            let message = 'אופס, זו לא התשובה הנכונה.';
-            if (wrongColorCount > 0) message += ` יש לך ${wrongColorCount} לבבות בצבע לא נכון.`;
-            if (correctColorCount !== heartsState.targetCount) message += ` צריך לאסוף ${heartsState.targetCount} לבבות ${colorNames[heartsState.targetColor]}, ואספת ${correctColorCount}.`;
-            await showFeedback(message, '🤔', 3000);
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-    });
 
-    // --- Game 4: Draw the Number ---
-    const canvas = document.getElementById('drawing-canvas');
-    const ctx = canvas.getContext('2d');
-    const drawInstruction = document.getElementById('draw-instruction');
-    const clearCanvasButton = document.getElementById('clear-canvas-button');
-    const finishDrawingButton = document.getElementById('finish-drawing-button');
-    let isDrawing = false;
+        // 3. Drawing logic
+        function getEventPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top,
+            };
+        }
 
-    function startGame_DrawTheNumber() {
-        drawInstruction.textContent = `עכשיו, בוא נצייר את המספר ${gameState.number}!`;
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const { x, y } = getEventPosition(e);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const { x, y } = getEventPosition(e);
+            ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+            hue++;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        // 4. Event listeners
+        // Remove old listeners to prevent duplicates
+        const newCanvas = canvas.cloneNode(true);
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        const newCtx = newCanvas.getContext('2d');
+
+        newCanvas.addEventListener('mousedown', startDrawing);
+        newCanvas.addEventListener('mousemove', draw);
+        newCanvas.addEventListener('mouseup', stopDrawing);
+        newCanvas.addEventListener('mouseout', stopDrawing);
+        newCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+        newCanvas.addEventListener('touchmove', draw, { passive: false });
+        newCanvas.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('clear-canvas-button').onclick = clearCanvas;
+
+        // 5. Show screen
         setupCanvas();
+        window.addEventListener('resize', setupCanvas); // Adjust canvas on resize
         showScreen('draw-number-screen');
     }
 
-    function setupCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = 400 * dpr;
-        canvas.height = 300 * dpr;
-        canvas.style.width = '400px';
-        canvas.style.height = '300px';
-        ctx.scale(dpr, dpr);
-        ctx.strokeStyle = '#0d47a1';
-        ctx.lineWidth = 10;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        clearCanvas();
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+        document.getElementById('finish-hearts-button').addEventListener('click', async () => {
+            const collectedContainer = document.getElementById('collected-hearts-container');
+            const collected = collectedContainer.children;
+            let correctColorCount = 0;
+            let wrongColorCount = 0;
+
+            for (const heart of collected) {
+                if (heart.dataset.color === gameState.heartsGame.targetColor) {
+                    correctColorCount++;
+                } else {
+                    wrongColorCount++;
+                }
+            }
+
+            if (wrongColorCount === 0 && correctColorCount === gameState.heartsGame.targetCount) {
+                await showFeedback('נהדר!', '💖', 1500, true);
+                if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);
+                startDrawTheNumber();
+            } else {
+                let message = 'אופס, זו לא התשובה הנכונה.';
+                if (wrongColorCount > 0) message += ` יש לך ${wrongColorCount} לבבות בצבע לא נכון.`;
+                if (correctColorCount !== gameState.heartsGame.targetCount) message += ` צריך לאסוף ${gameState.heartsGame.targetCount} לבבות, ואספת ${correctColorCount}.`;
+                await showFeedback(message, '🤔', 3000);
+            }
+        });
+
+        document.getElementById('finish-drawing-button').addEventListener('click', async () => {
+            await showFeedback('כל הכבוד! סיימת את כל המשחקים!', '🥳', 2500, true);
+            showScreen('participant-selection-screen');
+        });
     }
 
-    function startDrawing(e) { isDrawing = true; draw(e); }
-    function stopDrawing() { isDrawing = false; ctx.beginPath(); }
+    // --- App Initialization ---
+    function init() {
+        // Splash screen transition
+        setTimeout(() => {
+            showScreen('participant-selection-screen');
+        }, 2500);
 
-    function draw(e) {
-        if (!isDrawing) return;
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+        // Participant selection event listener
+        document.querySelector('.participant-card').addEventListener('click', (e) => {
+            gameState.participant = e.currentTarget.dataset.participant;
+            startFindTheNumber();
+        });
+
+        // Setup other persistent event listeners
+        setupEventListeners();
     }
-
-    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
-
-    clearCanvasButton.addEventListener('click', clearCanvas);
-
-    finishDrawingButton.addEventListener('click', async () => {
-        await showFeedback('כל הכבוד! סיימת את כל המשחקים!', '🥳', 2500, true);
-        showScreen('participant-selection-screen');
-    });
 
     // --- Expose functions for testing ---
-    window.gameState = gameState;
-    window.startGame_MathProblems = startGame_MathProblems;
-    window.startGame_CollectHearts = startGame_CollectHearts;
-    window.startGame_DrawTheNumber = startGame_DrawTheNumber;
+    window.exposeForTesting = () => {
+        window.gameState = gameState;
+        window.startMathProblems = startMathProblems;
+        window.startCollectHearts = startCollectHearts;
+        window.startDrawTheNumber = startDrawTheNumber;
+    };
+
+    init(); // Start the app
 });

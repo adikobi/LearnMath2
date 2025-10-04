@@ -2,21 +2,20 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>משחק חשבון</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Splash Screen -->
     <div id="splash-screen" class="screen active">
-        <div class="logo">
-            <!-- לוגו זמני -->
-            <span>🎨</span>
-        </div>
+        <div class="logo">🎨</div>
         <h1>משחק חשבון</h1>
     </div>
 
-    <!-- Screens will be added here -->
     <!-- Participant Selection Screen -->
     <div id="participant-selection-screen" class="screen">
         <h2>בחר משתתף</h2>
@@ -30,12 +29,8 @@
 
     <!-- Find the Number Screen -->
     <div id="find-the-number-screen" class="screen">
-        <h2>מצא את המספר!</h2>
-        <p id="instruction-text">לחץ על הרמקול כדי לשמוע את המספר</p>
         <div id="game-area">
-            <div id="number-container">
-                <!-- Numbers will be dynamically added here -->
-            </div>
+            <div id="number-container"></div>
         </div>
         <div id="hint-controls">
             <button id="speak-button" class="control-button">🔊</button>
@@ -49,20 +44,15 @@
             <span id="math-problem"></span>
         </div>
         <div id="answer-container">
-            <span id="user-answer"></span>
+            <!-- Answer images will be displayed here -->
         </div>
-        <div id="feedback-container"></div>
-        <div id="number-pad">
-            <!-- Number images will be dynamically added here -->
-        </div>
+        <div id="number-pad"></div>
     </div>
 
     <!-- Collect Hearts Screen -->
     <div id="collect-hearts-screen" class="screen">
         <h2 id="hearts-instruction"></h2>
-        <div id="hearts-game-area">
-            <!-- Hearts will fly around here -->
-        </div>
+        <div id="hearts-game-area"></div>
         <div id="collected-hearts-area">
             <h3>הלבבות שאספתי</h3>
             <div id="collected-hearts-container"></div>
@@ -73,7 +63,10 @@
     <!-- Draw the Number Screen -->
     <div id="draw-number-screen" class="screen">
         <h2 id="draw-instruction"></h2>
-        <canvas id="drawing-canvas"></canvas>
+        <div id="canvas-wrapper">
+             <img id="trace-image" class="trace-image" src="" alt="יש לעקוב אחר המספר">
+             <canvas id="drawing-canvas"></canvas>
+        </div>
         <div id="drawing-controls">
             <button id="clear-canvas-button" class="action-button" style="background-color: #f44336;">נקה</button>
             <button id="finish-drawing-button" class="action-button">סיימתי</button>
@@ -88,9 +81,7 @@
         </div>
     </div>
 
-
-    <script src="script.js"></script>
-    <!-- Confetti Library -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
