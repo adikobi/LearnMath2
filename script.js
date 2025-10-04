@@ -392,9 +392,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showScreen('participant-selection-screen');
         }, 2500);
 
-        document.querySelector('.participant-card').addEventListener('click', (e) => {
-            gameState.participant = e.currentTarget.dataset.participant;
-            startFindTheNumber();
+        document.querySelectorAll('.participant-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                gameState.participant = e.currentTarget.dataset.participant;
+                startFindTheNumber();
+            });
         });
 
         document.getElementById('finish-hearts-button').addEventListener('click', async () => {
