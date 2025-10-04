@@ -7,6 +7,7 @@
     --bg-light-yellow: #fff9c4;
     --bg-light-cyan: #e0f7fa;
     --bg-light-gray: #f5f5f5;
+    --border-radius: 15px;
 }
 
 * {
@@ -19,16 +20,20 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    position: fixed; /* Prevents pull-to-refresh and other gestures */
 }
 
 body {
     font-family: var(--primary-font);
     background-color: var(--bg-light-gray);
     color: var(--text-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
     -webkit-tap-highlight-color: transparent;
+}
+
+#app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
 }
 
 .screen {
@@ -39,60 +44,53 @@ body {
     text-align: center;
     width: 100%;
     height: 100%;
-    padding: 15px;
+    padding: 20px;
     gap: 20px;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .screen.active {
     display: flex;
 }
 
-h1 { font-size: 2.5em; }
-h2 { font-size: 2em; }
-p { font-size: 1.2em; }
+h1, h2, p {
+    text-align: center;
+}
+
+h1 { font-size: clamp(2em, 8vw, 3em); }
+h2 { font-size: clamp(1.8em, 7vw, 2.5em); }
+p { font-size: clamp(1em, 5vw, 1.2em); }
+
+img {
+    border-radius: var(--border-radius);
+    -webkit-user-drag: none; /* Disable image dragging */
+    user-select: none;
+}
 
 /* --- Splash Screen --- */
 #splash-screen {
     background: linear-gradient(135deg, #6e8efb, #a777e3);
     color: white;
 }
-#splash-screen .logo {
-    font-size: 10vw;
-    animation: bounce 2s infinite;
-}
 
 /* --- Participant Selection --- */
-#participants-container {
-    display: flex;
-    gap: 30px;
-}
-.participant-card {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: transform 0.3s;
-}
-.participant-card:hover {
-    transform: scale(1.05);
-}
 .participant-avatar {
-    font-size: 15vw;
-    width: 25vw;
-    height: 25vw;
-    max-width: 120px;
-    max-height: 120px;
-    background-color: #eee;
+    width: 35vw;
+    height: 35vw;
+    max-width: 150px;
+    max-height: 150px;
     border-radius: 50%;
+    background-color: white;
+    border: 5px solid #eee;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0 auto 15px;
-}
-.participant-card p {
-    font-size: 1.5em;
-    font-weight: bold;
+    font-size: clamp(5em, 20vw, 6em); /* Make emoji large */
+    color: #555;
+    margin-bottom: 15px;
 }
 
 /* --- Find the Number --- */
@@ -102,46 +100,47 @@ p { font-size: 1.2em; }
     height: 70%;
     position: relative;
     overflow: hidden;
-    border-radius: 20px;
-    background: white;
 }
 .number-image {
     position: absolute;
-    width: 18vw;
+    width: 20vw;
     max-width: 100px;
+    height: auto;
     cursor: pointer;
     transition: transform 0.2s;
-    animation: drift 15s infinite linear alternate;
 }
 .number-image img {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Keeps aspect ratio */
+    object-fit: contain;
+    border-radius: var(--border-radius);
 }
 #hint-controls { display: flex; gap: 20px; }
 .control-button {
-    font-size: 10vw;
-    max-font-size: 40px;
+    font-size: clamp(2em, 8vw, 2.5em);
     background: #ffc107;
     border: none;
     border-radius: 50%;
-    width: 20vw;
-    height: 20vw;
+    width: 18vw;
+    height: 18vw;
     max-width: 80px;
     max-height: 80px;
     cursor: pointer;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* --- Math Problems --- */
 #math-problems-screen { background-color: var(--bg-light-yellow); }
 #problem-container {
     background: white;
-    border-radius: 20px;
+    border-radius: var(--border-radius);
     padding: 20px 30px;
-    font-size: 2.5em;
+    font-size: clamp(2em, 8vw, 3em);
     font-weight: bold;
-    direction: ltr; /* Ensure math problem reads LTR */
+    direction: ltr;
 }
 #answer-container {
     min-height: 10vh;
@@ -169,36 +168,29 @@ p { font-size: 1.2em; }
 .number-pad-img {
     width: 15vw;
     max-width: 80px;
-    border-radius: 15px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    cursor: pointer;
-    transition: transform 0.2s;
 }
-.number-pad-img:hover { transform: scale(1.1); }
 
 /* --- Collect Hearts --- */
 #collect-hearts-screen { background-color: var(--bg-light-pink); }
-#hearts-instruction { font-size: 1.8em; }
 #hearts-game-area {
     width: 100%;
-    height: 50%;
+    height: 60%;
     position: relative;
-    border: 2px dashed #f8bbd0;
-    border-radius: 20px;
     overflow: hidden;
 }
 .heart {
     position: absolute;
-    font-size: 10vw;
-    max-font-size: 50px;
+    font-size: clamp(2.5em, 10vw, 3.5em);
     cursor: pointer;
     animation: rain 5s linear infinite;
     user-select: none;
+    padding: 10px; /* Increase clickable area */
+    margin: -10px; /* Compensate for padding */
 }
 #collected-hearts-area {
     width: 100%;
     padding: 10px;
-    border-radius: 20px;
+    border-radius: var(--border-radius);
     min-height: 12vh;
     background: rgba(255,255,255,0.6);
 }
@@ -208,7 +200,7 @@ p { font-size: 1.2em; }
     gap: 10px;
     justify-content: center;
 }
-.collected-heart { font-size: 8vw; max-font-size: 40px; cursor: pointer; }
+.collected-heart { font-size: clamp(2em, 8vw, 2.5em); cursor: pointer; }
 
 /* --- Draw the Number --- */
 #draw-number-screen { background-color: var(--bg-light-blue); }
@@ -218,7 +210,7 @@ p { font-size: 1.2em; }
     height: 60vw;
     max-width: 500px;
     max-height: 400px;
-    border-radius: 20px;
+    border-radius: var(--border-radius);
     background: white;
     box-shadow: 0 5px 20px rgba(0,0,0,0.15);
 }
@@ -229,13 +221,13 @@ p { font-size: 1.2em; }
     width: 100%;
     height: 100%;
     object-fit: contain;
-    opacity: 0.15;
+    opacity: 0.2;
     pointer-events: none;
 }
 #drawing-canvas {
     background: transparent;
     cursor: crosshair;
-    touch-action: none; /* Prevents scrolling while drawing on mobile */
+    touch-action: none;
     width: 100%;
     height: 100%;
 }
@@ -245,66 +237,44 @@ p { font-size: 1.2em; }
     color: white;
     padding: 15px 30px;
     border: none;
-    border-radius: 15px;
+    border-radius: var(--border-radius);
     font-size: 1.2em;
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 5px 10px rgba(0,0,0,0.2);
 }
+#clear-canvas-button { background-color: #f44336; }
 
-/* --- Feedback Overlay --- */
-.feedback-overlay {
-    position: fixed;
+/* --- Non-modal Feedback --- */
+#feedback-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8em;
+    pointer-events: none;
+    z-index: 1001;
+}
+.feedback-emoji {
+    animation: popAndFade 1.5s forwards;
+}
+#confetti-canvas {
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    pointer-events: none;
     z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
 }
-.feedback-overlay.visible {
-    opacity: 1;
-    visibility: visible;
-}
-.feedback-box {
-    background: white;
-    border-radius: 25px;
-    padding: 30px 40px;
-    transform: scale(0.7);
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.feedback-overlay.visible .feedback-box { transform: scale(1); }
-#feedback-emoji { font-size: 5em; animation: pop 0.5s; }
-#feedback-text { font-size: 1.5em; font-weight: bold; margin-top: 10px;}
 
 /* --- Animations --- */
-@keyframes bounce { /* For splash logo */
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-30px); }
-    60% { transform: translateY(-15px); }
+@keyframes popAndFade {
+    0% { transform: scale(0.5); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
 }
-@keyframes drift { /* For Find the Number */
-    from { transform: translateX(-100px); }
-    to { transform: translateX(100vw); }
-}
-@keyframes rain { /* For Collect Hearts */
-    from { transform: translateY(-10vh); }
-    to { transform: translateY(110vh); }
-}
-@keyframes pop { /* For feedback emoji */
-    0% { transform: scale(0.5); }
-    70% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-@keyframes shake { /* For wrong answers */
-    10%, 90% { transform: translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translate3d(2px, 0, 0); }
-    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-    40%, 60% { transform: translate3d(4px, 0, 0); }
+@keyframes rain {
+    from { transform: translateY(-10vh) rotate(0deg); }
+    to { transform: translateY(110vh) rotate(360deg); }
 }

@@ -1,22 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Elements ---
+    const appContainer = document.getElementById('app-container');
     const screens = document.querySelectorAll('.screen');
-    const feedbackOverlay = document.getElementById('feedback-overlay');
-    const feedbackText = document.getElementById('feedback-text');
-    const feedbackEmoji = document.getElementById('feedback-emoji');
+    const feedbackContainer = document.getElementById('feedback-container');
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const confetti = window.confetti.create(confettiCanvas, {
+        resize: true,
+        useWorker: true
+    });
 
     // --- Game State ---
     const gameState = {
         participant: null,
         targetNumber: null,
-        mathProblem: {},
-        heartsGame: {},
-        level: 0
     };
 
-    // --- Speech Synthesis ---
-    const synth = window.speechSynthesis;
-    let voices = [];
     const heartColors = {
         red: '❤️',
         blue: '💙',
@@ -24,40 +22,34 @@ document.addEventListener('DOMContentLoaded', () => {
         yellow: '💛'
     };
 
-    function populateVoiceList() {
+    // --- Speech Synthesis ---
+    const synth = window.speechSynthesis;
+    let hebrewVoice = null;
+
+    function setupVoices() {
         if (!synth) return;
-        voices = synth.getVoices().filter(voice => voice.lang.startsWith('he'));
+        let voices = synth.getVoices();
+        // Prioritize a high-quality Hebrew voice if available
+        hebrewVoice = voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) || voices.find(v => v.lang === 'he-IL');
+        console.log("Selected voice:", hebrewVoice ? hebrewVoice.name : "Default");
     }
 
-    populateVoiceList();
-    if (synth && speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = populateVoiceList;
+    setupVoices();
+    if (synth && synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = setupVoices;
     }
 
     function speak(text, rate = 0.9, pitch = 1.1) {
-        if (!synth) {
-            console.warn("Speech Synthesis not supported, skipping speak().");
-            return;
-        }
+        if (!synth || !text) return;
         if (synth.speaking) {
-            console.error('SpeechSynthesis is already speaking.');
-            return;
+            synth.cancel();
         }
         const utterThis = new SpeechSynthesisUtterance(text);
-        utterThis.onend = () => {
-            console.log('SpeechSynthesisUtterance.onend');
-        };
-        utterThis.onerror = (event) => {
-            console.error('SpeechSynthesisUtterance.onerror', event);
-        };
-
-        // Use a Hebrew voice if available
-        if (voices.length > 0) {
-            utterThis.voice = voices[0];
+        if (hebrewVoice) {
+            utterThis.voice = hebrewVoice;
         } else {
             utterThis.lang = 'he-IL';
         }
-
         utterThis.pitch = pitch;
         utterThis.rate = rate;
         synth.speak(utterThis);
@@ -69,80 +61,105 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(screenId).classList.add('active');
     }
 
-    function showFeedback(text, emoji, duration = 2000, isSuccess = false) {
-        return new Promise(resolve => {
-            feedbackText.textContent = text;
-            feedbackEmoji.textContent = emoji;
-            feedbackOverlay.classList.add('visible');
-
-            if (isSuccess && typeof confetti === 'function') {
-                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            }
-
-            setTimeout(() => {
-                feedbackOverlay.classList.remove('visible');
-                setTimeout(resolve, 300);
-            }, duration);
+    function triggerConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 90,
+            origin: { y: 0.6 }
         });
     }
 
-    // --- Game Stage Functions ---
+    function showFeedback(emoji) {
+        feedbackContainer.innerHTML = ''; // Clear previous feedback
+        const emojiEl = document.createElement('div');
+        emojiEl.textContent = emoji;
+        emojiEl.classList.add('feedback-emoji');
+        feedbackContainer.appendChild(emojiEl);
+        setTimeout(() => {
+            emojiEl.remove();
+        }, 1500);
+    }
+
+    // --- Game Logic ---
+    let animationFrameId = null;
+
     function startFindTheNumber() {
-        // 1. Setup game state
+        // Stop any previous animations
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
         gameState.targetNumber = Math.floor(Math.random() * 10);
-        console.log(`Target number: ${gameState.targetNumber}`);
+        const gameArea = document.getElementById('game-area');
+        gameArea.innerHTML = '';
+        const numbers = [];
 
-        // 2. Populate the game area with numbers
-        const numberContainer = document.getElementById('number-container');
-        numberContainer.innerHTML = '';
+        // Create number elements with physics properties
         for (let i = 0; i <= 9; i++) {
-            const numberDiv = document.createElement('div');
-            numberDiv.classList.add('number-image');
-            numberDiv.dataset.number = i;
+            const el = document.createElement('div');
+            el.classList.add('number-image');
+            el.dataset.number = i;
+            el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
+            gameArea.appendChild(el);
 
-            const img = document.createElement('img');
-            img.src = `assets/${gameState.participant}/${i}.jpg`;
-            numberDiv.appendChild(img);
+            numbers.push({
+                el,
+                x: Math.random() * (gameArea.clientWidth - el.clientWidth),
+                y: Math.random() * (gameArea.clientHeight - el.clientHeight),
+                vx: (Math.random() - 0.5) * 4, // Horizontal velocity
+                vy: (Math.random() - 0.5) * 4, // Vertical velocity
+                width: el.clientWidth,
+                height: el.clientHeight,
+            });
 
-            // Randomize position and animation
-            numberDiv.style.top = `${Math.random() * 85}%`;
-            numberDiv.style.left = `${Math.random() * 85}%`;
-            numberDiv.style.animationDuration = `${10 + Math.random() * 10}s`;
-            numberDiv.style.animationDelay = `-${Math.random() * 5}s`;
-
-            numberDiv.addEventListener('click', handleNumberClick);
-            numberContainer.appendChild(numberDiv);
+            el.addEventListener('click', () => handleNumberClick(i, el));
         }
 
-        // 3. Show screen and speak the number
+        // Animation loop
+        function update() {
+            const areaWidth = gameArea.clientWidth;
+            const areaHeight = gameArea.clientHeight;
+
+            numbers.forEach(n => {
+                // Move
+                n.x += n.vx;
+                n.y += n.vy;
+
+                // Bounce off walls
+                if (n.x <= 0 || n.x + n.width >= areaWidth) n.vx *= -1;
+                if (n.y <= 0 || n.y + n.height >= areaHeight) n.vy *= -1;
+
+                // Clamp position to stay within bounds
+                n.x = Math.max(0, Math.min(n.x, areaWidth - n.width));
+                n.y = Math.max(0, Math.min(n.y, areaHeight - n.height));
+
+                n.el.style.transform = `translate(${n.x}px, ${n.y}px)`;
+            });
+
+            animationFrameId = requestAnimationFrame(update);
+        }
+
         showScreen('find-the-number-screen');
         setTimeout(() => speak(String(gameState.targetNumber)), 500);
+        update();
     }
 
-    async function handleNumberClick(event) {
-        const clickedEl = event.currentTarget;
-        const clickedNumber = parseInt(clickedEl.dataset.number);
+    async function handleNumberClick(clickedNumber, element) {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
         if (clickedNumber === gameState.targetNumber) {
-            await showFeedback('כל הכבוד!', '🎉', 1500, true);
+            triggerConfetti();
+            await new Promise(r => setTimeout(r, 1500));
             startMathProblems();
         } else {
-            clickedEl.style.animation = 'shake 0.5s';
-            await showFeedback('אופס, נסה שוב', '🤔', 1500);
-            clickedEl.style.animation = 'drift 15s infinite linear alternate'; // Resume drifting
+            showFeedback('❌');
+            element.style.animation = 'shake 0.5s';
+            setTimeout(() => {
+                element.style.animation = '';
+                animationFrameId = requestAnimationFrame(update);
+            }, 500);
         }
     }
 
-    // Hint buttons logic
-    document.getElementById('speak-button').addEventListener('click', () => {
-        speak(String(gameState.targetNumber));
-    });
-
-    document.getElementById('show-card-button').addEventListener('click', () => {
-        showFeedback(`${gameState.targetNumber}`, '🃏', 2000);
-    });
-
-
+    // --- Math Problems ---
     function startMathProblems() {
         gameState.mathProblem = { questionsSolved: 0 };
         setupNumberPad();
@@ -152,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupNumberPad() {
         const numberPad = document.getElementById('number-pad');
-        if (numberPad.children.length > 0) return; // Setup only once
+        if (numberPad.children.length > 0) return;
 
         for (let i = 0; i <= 9; i++) {
             const img = document.createElement('img');
@@ -175,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 problemText = `${num} + ${otherNum} = ?`;
                 answer = num + otherNum;
             } else {
-                if (num < otherNum) [num, otherNum] = [otherNum, num]; // Ensure positive result
+                if (num < otherNum) [num, otherNum] = [otherNum, num];
                 problemText = `${num} - ${otherNum} = ?`;
                 answer = num - otherNum;
             }
@@ -184,15 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 problemText = `${otherNum} + ${num} = ?`;
                 answer = otherNum + num;
             } else {
-                if (otherNum < num) otherNum = num + Math.floor(Math.random() * 5) + 1; // Ensure positive result
+                if (otherNum < num) otherNum = num + Math.floor(Math.random() * 5) + 1;
                 problemText = `${otherNum} - ${num} = ?`;
                 answer = otherNum - num;
             }
         }
-
         gameState.mathProblem.correctAnswer = answer;
         gameState.mathProblem.userAnswer = '';
-        document.getElementById('math-problem').textContent = problemText;
+        document.getElementById('problem-container').textContent = problemText;
         document.getElementById('answer-container').innerHTML = '';
     }
 
@@ -200,14 +216,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const digit = event.target.dataset.number;
         gameState.mathProblem.userAnswer += digit;
 
-        // Display the answer as an image
         const answerContainer = document.getElementById('answer-container');
         const img = document.createElement('img');
         img.src = event.target.src;
         img.classList.add('answer-image');
         answerContainer.appendChild(img);
 
-        // Check if the answer is complete
         if (gameState.mathProblem.userAnswer.length === String(gameState.mathProblem.correctAnswer).length) {
             checkMathAnswer();
         }
@@ -216,44 +230,43 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkMathAnswer() {
         const userAnswer = parseInt(gameState.mathProblem.userAnswer);
         if (userAnswer === gameState.mathProblem.correctAnswer) {
+            triggerConfetti();
             gameState.mathProblem.questionsSolved++;
-
+            await new Promise(r => setTimeout(r, 1500));
             if (gameState.mathProblem.questionsSolved >= 2) {
-                await showFeedback('מעולה!', '🏆', 2000, true);
                 startCollectHearts();
             } else {
-                await showFeedback('✅', '', 1500, true);
                 generateMathProblem();
             }
         } else {
-            await showFeedback('אופס, נסה שוב', '❌', 1500);
-            gameState.mathProblem.userAnswer = '';
+            showFeedback('❌');
+            await new Promise(r => setTimeout(r, 800));
             document.getElementById('answer-container').innerHTML = '';
+            gameState.mathProblem.userAnswer = '';
         }
     }
 
     function startCollectHearts() {
+        if (gameState.heartsGame && gameState.heartsGame.rainInterval) {
+            clearInterval(gameState.heartsGame.rainInterval);
+        }
+
         const heartsGameArea = document.getElementById('hearts-game-area');
         const instructionEl = document.getElementById('hearts-instruction');
+        const collectedContainer = document.getElementById('collected-hearts-container');
 
-        // 1. Setup game state
         gameState.heartsGame = {
             targetColor: Object.keys(heartColors)[Math.floor(Math.random() * Object.keys(heartColors).length)],
             targetCount: gameState.targetNumber === 0 ? 1 : gameState.targetNumber,
         };
 
-        // 2. Update instruction with emoji
         instructionEl.innerHTML = `אסוף ${gameState.heartsGame.targetCount} לבבות ${heartColors[gameState.heartsGame.targetColor]}`;
-
-        // 3. Clear previous game elements
         heartsGameArea.innerHTML = '';
-        document.getElementById('collected-hearts-container').innerHTML = '';
+        collectedContainer.innerHTML = '';
 
-        // 4. Generate raining hearts
-        if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);
         gameState.heartsGame.rainInterval = setInterval(() => {
             createFallingHeart(heartsGameArea);
-        }, 400);
+        }, 600); // Slower rate for less clutter
 
         showScreen('collect-hearts-screen');
     }
@@ -267,8 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
         heart.textContent = heartColors[color];
         heart.dataset.color = color;
 
-        heart.style.left = `${Math.random() * 95}%`;
-        heart.style.animationDuration = `${3 + Math.random() * 3}s`;
+        heart.style.left = `${Math.random() * 90}%`;
+        heart.style.animationDuration = `${4 + Math.random() * 3}s`; // Slightly slower rain
 
         heart.addEventListener('click', handleHeartCollect, { once: true });
         heart.addEventListener('animationend', () => heart.remove());
@@ -296,41 +309,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = document.getElementById('drawing-canvas');
         const ctx = canvas.getContext('2d');
         const traceImage = document.getElementById('trace-image');
+        const wrapper = document.getElementById('canvas-wrapper');
         let isDrawing = false;
         let hue = 0;
 
-        // 1. Setup
+        // --- Setup ---
         document.getElementById('draw-instruction').textContent = `עכשיו, בוא נצייר את המספר ${gameState.targetNumber}!`;
         traceImage.src = `assets/${gameState.participant}/${gameState.targetNumber}.jpg`;
 
-        // 2. Canvas setup
-        function setupCanvas() {
+        // --- Canvas Sizing ---
+        function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
+            canvas.width = wrapper.clientWidth * dpr;
+            canvas.height = wrapper.clientHeight * dpr;
             ctx.scale(dpr, dpr);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = 10;
+            ctx.lineWidth = 12; // A bit thicker for better feel
         }
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        // 3. Drawing logic
+        // --- Drawing Logic ---
         function getEventPosition(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top,
-            };
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function startDrawing(e) {
+        function start(e) {
             e.preventDefault();
             isDrawing = true;
             const { x, y } = getEventPosition(e);
@@ -343,40 +352,54 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const { x, y } = getEventPosition(e);
             ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-            hue++;
+            hue = (hue + 1) % 360;
             ctx.lineTo(x, y);
             ctx.stroke();
         }
 
-        function stopDrawing() {
+        function stop() {
             isDrawing = false;
         }
 
-        // 4. Event listeners
-        // Remove old listeners to prevent duplicates
-        const newCanvas = canvas.cloneNode(true);
-        canvas.parentNode.replaceChild(newCanvas, canvas);
-        const newCtx = newCanvas.getContext('2d');
+        // --- Event Listeners ---
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stop);
+        canvas.addEventListener('mouseout', stop);
+        canvas.addEventListener('touchstart', start, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stop);
 
-        newCanvas.addEventListener('mousedown', startDrawing);
-        newCanvas.addEventListener('mousemove', draw);
-        newCanvas.addEventListener('mouseup', stopDrawing);
-        newCanvas.addEventListener('mouseout', stopDrawing);
-        newCanvas.addEventListener('touchstart', startDrawing, { passive: false });
-        newCanvas.addEventListener('touchmove', draw, { passive: false });
-        newCanvas.addEventListener('touchend', stopDrawing);
+        // --- Button Controls ---
+        document.getElementById('clear-canvas-button').onclick = () => {
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+        };
 
-        document.getElementById('clear-canvas-button').onclick = clearCanvas;
+        document.getElementById('finish-drawing-button').onclick = async () => {
+            // Cleanup listeners to prevent memory leaks when stage restarts
+            window.removeEventListener('resize', resizeCanvas);
+            triggerConfetti();
+            await new Promise(r => setTimeout(r, 1500));
+            showScreen('participant-selection-screen');
+        };
 
-        // 5. Show screen
-        setupCanvas();
-        window.addEventListener('resize', setupCanvas); // Adjust canvas on resize
         showScreen('draw-number-screen');
     }
 
-    // --- Event Listeners Setup ---
-    function setupEventListeners() {
+    // --- App Initialization ---
+    function init() {
+        setTimeout(() => {
+            showScreen('participant-selection-screen');
+        }, 2500);
+
+        document.querySelector('.participant-card').addEventListener('click', (e) => {
+            gameState.participant = e.currentTarget.dataset.participant;
+            startFindTheNumber();
+        });
+
         document.getElementById('finish-hearts-button').addEventListener('click', async () => {
+            if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);
+
             const collectedContainer = document.getElementById('collected-hearts-container');
             const collected = collectedContainer.children;
             let correctColorCount = 0;
@@ -391,47 +414,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (wrongColorCount === 0 && correctColorCount === gameState.heartsGame.targetCount) {
-                await showFeedback('נהדר!', '💖', 1500, true);
-                if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);
+                triggerConfetti();
+                await new Promise(r => setTimeout(r, 1500));
                 startDrawTheNumber();
             } else {
-                let message = 'אופס, זו לא התשובה הנכונה.';
-                if (wrongColorCount > 0) message += ` יש לך ${wrongColorCount} לבבות בצבע לא נכון.`;
-                if (correctColorCount !== gameState.heartsGame.targetCount) message += ` צריך לאסוף ${gameState.heartsGame.targetCount} לבבות, ואספת ${correctColorCount}.`;
-                await showFeedback(message, '🤔', 3000);
+                showFeedback('❌');
+                await new Promise(r => setTimeout(r, 1500));
+                startCollectHearts();
             }
         });
-
-        document.getElementById('finish-drawing-button').addEventListener('click', async () => {
-            await showFeedback('כל הכבוד! סיימת את כל המשחקים!', '🥳', 2500, true);
-            showScreen('participant-selection-screen');
-        });
     }
 
-    // --- App Initialization ---
-    function init() {
-        // Splash screen transition
-        setTimeout(() => {
-            showScreen('participant-selection-screen');
-        }, 2500);
+    init();
 
-        // Participant selection event listener
-        document.querySelector('.participant-card').addEventListener('click', (e) => {
-            gameState.participant = e.currentTarget.dataset.participant;
-            startFindTheNumber();
-        });
-
-        // Setup other persistent event listeners
-        setupEventListeners();
-    }
-
-    // --- Expose functions for testing ---
-    window.exposeForTesting = () => {
-        window.gameState = gameState;
-        window.startMathProblems = startMathProblems;
-        window.startCollectHearts = startCollectHearts;
-        window.startDrawTheNumber = startDrawTheNumber;
-    };
-
-    init(); // Start the app
+    // --- Expose for testing ---
+    window.gameState = gameState;
+    window.startFindTheNumber = startFindTheNumber;
+    window.startMathProblems = startMathProblems;
+    window.startCollectHearts = startCollectHearts;
+    window.startDrawTheNumber = startDrawTheNumber;
 });

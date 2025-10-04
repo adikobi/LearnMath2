@@ -10,76 +10,70 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Splash Screen -->
-    <div id="splash-screen" class="screen active">
-        <div class="logo">🎨</div>
-        <h1>משחק חשבון</h1>
-    </div>
+    <!-- App Container -->
+    <div id="app-container">
+        <!-- Splash Screen -->
+        <div id="splash-screen" class="screen active">
+            <div class="logo">🎨</div>
+            <h1>משחק חשבון</h1>
+        </div>
 
-    <!-- Participant Selection Screen -->
-    <div id="participant-selection-screen" class="screen">
-        <h2>בחר משתתף</h2>
-        <div id="participants-container">
-            <div class="participant-card" data-participant="Tamar">
-                <div class="participant-avatar">👤</div>
-                <p>תמר</p>
+        <!-- Participant Selection Screen -->
+        <div id="participant-selection-screen" class="screen">
+            <h2>בחר משתתף</h2>
+            <div id="participants-container">
+                <div class="participant-card" data-participant="Tamar">
+                    <div class="participant-avatar">
+                        👤
+                    </div>
+                    <p>תמר</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Find the Number Screen -->
+        <div id="find-the-number-screen" class="screen">
+            <div id="game-area"></div>
+            <div id="hint-controls">
+                <button id="speak-button" class="control-button">🔊</button>
+                <button id="show-card-button" class="control-button">🃏</button>
+            </div>
+        </div>
+
+        <!-- Math Problems Screen -->
+        <div id="math-problems-screen" class="screen">
+            <div id="problem-container"></div>
+            <div id="answer-container"></div>
+            <div id="number-pad"></div>
+        </div>
+
+        <!-- Collect Hearts Screen -->
+        <div id="collect-hearts-screen" class="screen">
+            <h2 id="hearts-instruction"></h2>
+            <div id="hearts-game-area"></div>
+            <div id="collected-hearts-area">
+                <div id="collected-hearts-container"></div>
+            </div>
+            <button id="finish-hearts-button" class="action-button">סיימתי</button>
+        </div>
+
+        <!-- Draw the Number Screen -->
+        <div id="draw-number-screen" class="screen">
+            <h2 id="draw-instruction"></h2>
+            <div id="canvas-wrapper">
+                 <img id="trace-image" class="trace-image" src="" alt="יש לעקוב אחר המספר">
+                 <canvas id="drawing-canvas"></canvas>
+            </div>
+            <div id="drawing-controls">
+                <button id="clear-canvas-button" class="action-button">נקה</button>
+                <button id="finish-drawing-button" class="action-button">סיימתי</button>
             </div>
         </div>
     </div>
 
-    <!-- Find the Number Screen -->
-    <div id="find-the-number-screen" class="screen">
-        <div id="game-area">
-            <div id="number-container"></div>
-        </div>
-        <div id="hint-controls">
-            <button id="speak-button" class="control-button">🔊</button>
-            <button id="show-card-button" class="control-button">🃏</button>
-        </div>
-    </div>
-
-    <!-- Math Problems Screen -->
-    <div id="math-problems-screen" class="screen">
-        <div id="problem-container">
-            <span id="math-problem"></span>
-        </div>
-        <div id="answer-container">
-            <!-- Answer images will be displayed here -->
-        </div>
-        <div id="number-pad"></div>
-    </div>
-
-    <!-- Collect Hearts Screen -->
-    <div id="collect-hearts-screen" class="screen">
-        <h2 id="hearts-instruction"></h2>
-        <div id="hearts-game-area"></div>
-        <div id="collected-hearts-area">
-            <h3>הלבבות שאספתי</h3>
-            <div id="collected-hearts-container"></div>
-        </div>
-        <button id="finish-hearts-button" class="action-button">סיימתי</button>
-    </div>
-
-    <!-- Draw the Number Screen -->
-    <div id="draw-number-screen" class="screen">
-        <h2 id="draw-instruction"></h2>
-        <div id="canvas-wrapper">
-             <img id="trace-image" class="trace-image" src="" alt="יש לעקוב אחר המספר">
-             <canvas id="drawing-canvas"></canvas>
-        </div>
-        <div id="drawing-controls">
-            <button id="clear-canvas-button" class="action-button" style="background-color: #f44336;">נקה</button>
-            <button id="finish-drawing-button" class="action-button">סיימתי</button>
-        </div>
-    </div>
-
-    <!-- Feedback Overlay -->
-    <div id="feedback-overlay" class="feedback-overlay">
-        <div class="feedback-box">
-            <div id="feedback-emoji"></div>
-            <p id="feedback-text"></p>
-        </div>
-    </div>
+    <!-- Non-modal feedback elements -->
+    <div id="feedback-container"></div>
+    <canvas id="confetti-canvas"></canvas>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
