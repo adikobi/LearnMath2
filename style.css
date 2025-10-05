@@ -111,9 +111,17 @@ img {
     position: absolute;
     width: 20vw;
     max-width: 100px;
-    height: auto;
+    height: 20vw; /* Match width to create a square aspect ratio */
+    max-height: 100px; /* Match max-width */
     cursor: pointer;
-    transition: transform 0.2s;
+    user-select: none;
+}
+
+.correct-guess {
+    transform: scale(1.2);
+    box-shadow: 0 0 20px gold;
+    z-index: 10;
+    animation: none !important;
 }
 .number-image img {
     width: 100%;

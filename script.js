@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupVoices() {
         if (!synth) return;
         let voices = synth.getVoices();
-        // Prioritize a high-quality Hebrew voice if available
         hebrewVoice = voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) || voices.find(v => v.lang === 'he-IL');
         console.log("Selected voice:", hebrewVoice ? hebrewVoice.name : "Default");
     }
@@ -81,138 +80,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Game Logic ---
-    let animationFrameId = null;
-    let numbers = []; // Keep track of numbers for animation
-    const numberImages = {}; // Cache for preloaded images
-
-    function preloadNumberImages(callback) {
-        let loadedCount = 0;
-        const totalImages = 10;
-
-        // Skip preloading if images are already cached
-        if (Object.keys(numberImages).length === totalImages) {
-            callback();
-            return;
-        }
-
-        for (let i = 0; i < totalImages; i++) {
-            const img = new Image();
-            img.src = `assets/${gameState.participant}/${i}.jpg`;
-            img.onload = () => {
-                loadedCount++;
-                numberImages[i] = img;
-                if (loadedCount === totalImages) {
-                    callback();
-                }
-            };
-            img.onerror = () => {
-                loadedCount++;
-                console.error(`Failed to load image for number ${i}.`);
-                if (loadedCount === totalImages) {
-                    callback();
-                }
-            };
-        }
-    }
+    let numberCreationInterval = null;
+    let fallingElements = [];
 
     function startFindTheNumber() {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
+        if (numberCreationInterval) clearInterval(numberCreationInterval);
 
         gameState.targetNumber = Math.floor(Math.random() * 10);
-        showScreen('find-the-number-screen');
-
-        preloadNumberImages(initializeFindTheNumberGame);
-    }
-
-    function initializeFindTheNumberGame() {
         const gameArea = document.getElementById('game-area');
         gameArea.innerHTML = '';
-        numbers = [];
+        fallingElements = [];
 
-        requestAnimationFrame(() => {
-            const areaWidth = gameArea.clientWidth;
-            const areaHeight = gameArea.clientHeight;
+        showScreen('find-the-number-screen');
 
-            if (areaWidth === 0 || areaHeight === 0) {
-                console.error("Game area has no dimensions. Aborting.");
-                return;
-            }
+        // Create a few numbers immediately
+        for(let i = 0; i < 5; i++) {
+            createFallingNumber(gameArea);
+        }
+        // Then create more over time
+        numberCreationInterval = setInterval(() => createFallingNumber(gameArea), 800);
 
-            for (let i = 0; i <= 9; i++) {
-                const el = document.createElement('div');
-                el.classList.add('number-image');
-                el.dataset.number = i;
-
-                if (numberImages[i]) {
-                    el.appendChild(numberImages[i].cloneNode(true));
-                } else {
-                    // Fallback in case preloading fails
-                    el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
-                }
-
-                gameArea.appendChild(el);
-                const rect = el.getBoundingClientRect();
-
-                numbers.push({
-                    el,
-                    x: Math.random() * (areaWidth - rect.width),
-                    y: Math.random() * (areaHeight - rect.height),
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: (Math.random() - 0.5) * 2,
-                    width: rect.width,
-                    height: rect.height,
-                });
-
-                el.addEventListener('click', () => handleNumberClick(i, el));
-            }
-
-            updateNumbersAnimation();
-            setTimeout(() => speak(String(gameState.targetNumber)), 500);
-        });
+        setTimeout(() => speak(String(gameState.targetNumber)), 500);
     }
 
-    function updateNumbersAnimation() {
-        const gameArea = document.getElementById('game-area');
-        const areaWidth = gameArea.clientWidth;
-        const areaHeight = gameArea.clientHeight;
+    function createFallingNumber(container) {
+        const number = Math.floor(Math.random() * 10);
+        const el = document.createElement('div');
+        el.classList.add('number-image');
+        // Use the same animation as the hearts
+        el.style.animation = `rain ${5 + Math.random() * 5}s linear`;
+        el.style.left = `${Math.random() * 90}%`;
+        el.style.transform = `scale(${0.8 + Math.random() * 0.4})`;
 
-        numbers.forEach(n => {
-            n.x += n.vx;
-            n.y += n.vy;
+        el.innerHTML = `<img src="assets/${gameState.participant}/${number}.jpg" alt="${number}">`;
+        el.dataset.number = number;
 
-            if (n.x <= 0 || n.x + n.width >= areaWidth) n.vx *= -1;
-            if (n.y <= 0 || n.y + n.height >= areaHeight) n.vy *= -1;
+        el.addEventListener('click', () => handleNumberClick(number, el));
 
-            n.x = Math.max(0, Math.min(n.x, areaWidth - n.width));
-            n.y = Math.max(0, Math.min(n.y, areaHeight - n.height));
+        container.appendChild(el);
+        fallingElements.push(el);
 
-            n.el.style.transform = `translate(${n.x}px, ${n.y}px)`;
+        // Clean up element when animation ends to prevent DOM clutter
+        el.addEventListener('animationend', () => {
+            el.remove();
+            const index = fallingElements.indexOf(el);
+            if (index > -1) {
+                fallingElements.splice(index, 1);
+            }
         });
-
-        animationFrameId = requestAnimationFrame(updateNumbersAnimation);
     }
 
     async function handleNumberClick(clickedNumber, element) {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
-
         if (clickedNumber === gameState.targetNumber) {
+            if (numberCreationInterval) clearInterval(numberCreationInterval);
+
+            fallingElements.forEach(el => {
+                // Stop all other animations
+                el.style.animationPlayState = 'paused';
+                if (el !== element) {
+                   el.style.opacity = '0.2';
+                }
+            });
+
+            element.classList.add('correct-guess');
+
             triggerConfetti();
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 2000));
             startMathProblems();
         } else {
             showFeedback('❌');
             element.style.animation = 'shake 0.5s';
             setTimeout(() => {
                 element.style.animation = '';
-                if (!animationFrameId) {
-                    animationFrameId = requestAnimationFrame(updateNumbersAnimation);
-                }
             }, 500);
         }
     }
