@@ -127,7 +127,7 @@ img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: var(--border-radius);
+    border-radius: 50%; /* Make them circular for a very soft look */
 }
 #hint-controls { display: flex; gap: 20px; }
 .control-button {
