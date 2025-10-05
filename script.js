@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupVoices() {
         if (!synth) return;
         let voices = synth.getVoices();
+        // Prioritize a high-quality Hebrew voice if available
         hebrewVoice = voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) || voices.find(v => v.lang === 'he-IL');
         console.log("Selected voice:", hebrewVoice ? hebrewVoice.name : "Default");
     }
@@ -82,6 +83,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Game Logic ---
     let animationFrameId = null;
     let numbers = []; // Keep track of numbers for animation
+    const numberImages = {}; // Cache for preloaded images
+
+    function preloadNumberImages(callback) {
+        let loadedCount = 0;
+        const totalImages = 10;
+
+        // Skip preloading if images are already cached
+        if (Object.keys(numberImages).length === totalImages) {
+            callback();
+            return;
+        }
+
+        for (let i = 0; i < totalImages; i++) {
+            const img = new Image();
+            img.src = `assets/${gameState.participant}/${i}.jpg`;
+            img.onload = () => {
+                loadedCount++;
+                numberImages[i] = img;
+                if (loadedCount === totalImages) {
+                    callback();
+                }
+            };
+            img.onerror = () => {
+                loadedCount++;
+                console.error(`Failed to load image for number ${i}.`);
+                if (loadedCount === totalImages) {
+                    callback();
+                }
+            };
+        }
+    }
 
     function startFindTheNumber() {
         if (animationFrameId) {
@@ -90,20 +122,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         gameState.targetNumber = Math.floor(Math.random() * 10);
+        showScreen('find-the-number-screen');
+
+        preloadNumberImages(initializeFindTheNumberGame);
+    }
+
+    function initializeFindTheNumberGame() {
         const gameArea = document.getElementById('game-area');
         gameArea.innerHTML = '';
         numbers = [];
 
-        // Show the screen first so elements have dimensions
-        showScreen('find-the-number-screen');
-
-        // Use requestAnimationFrame to wait for the DOM to be painted
         requestAnimationFrame(() => {
             const areaWidth = gameArea.clientWidth;
             const areaHeight = gameArea.clientHeight;
 
             if (areaWidth === 0 || areaHeight === 0) {
-                console.error("Game area has no dimensions. Something is wrong.");
+                console.error("Game area has no dimensions. Aborting.");
                 return;
             }
 
@@ -111,9 +145,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const el = document.createElement('div');
                 el.classList.add('number-image');
                 el.dataset.number = i;
-                el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
-                gameArea.appendChild(el);
 
+                if (numberImages[i]) {
+                    el.appendChild(numberImages[i].cloneNode(true));
+                } else {
+                    // Fallback in case preloading fails
+                    el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
+                }
+
+                gameArea.appendChild(el);
                 const rect = el.getBoundingClientRect();
 
                 numbers.push({

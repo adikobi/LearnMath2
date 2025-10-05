@@ -111,8 +111,7 @@ img {
     position: absolute;
     width: 20vw;
     max-width: 100px;
-    height: 20vw; /* Match width to create a square aspect ratio */
-    max-height: 100px; /* Match max-width */
+    height: auto;
     cursor: pointer;
     transition: transform 0.2s;
 }
