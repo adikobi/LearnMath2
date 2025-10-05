@@ -1,0 +1,286 @@
+/* --- General & Setup --- */
+:root {
+    --primary-font: 'Heebo', sans-serif;
+    --text-color: #333;
+    --bg-light-blue: #f0f8ff;
+    --bg-light-pink: #fce4ec;
+    --bg-light-yellow: #fff9c4;
+    --bg-light-cyan: #e0f7fa;
+    --bg-light-gray: #f5f5f5;
+    --border-radius: 15px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: fixed; /* Prevents pull-to-refresh and other gestures */
+}
+
+body {
+    font-family: var(--primary-font);
+    background-color: var(--bg-light-gray);
+    color: var(--text-color);
+    -webkit-tap-highlight-color: transparent;
+}
+
+#app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    gap: 20px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.screen.active {
+    display: flex;
+}
+
+h1, h2, p {
+    text-align: center;
+}
+
+h1 { font-size: clamp(2em, 8vw, 3em); }
+h2 { font-size: clamp(1.8em, 7vw, 2.5em); }
+p { font-size: clamp(1em, 5vw, 1.2em); }
+
+img {
+    border-radius: var(--border-radius);
+    -webkit-user-drag: none; /* Disable image dragging */
+    user-select: none;
+}
+
+/* --- Splash Screen --- */
+#splash-screen {
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+}
+
+/* --- Participant Selection --- */
+#participants-container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+}
+.participant-avatar {
+    width: 35vw;
+    height: 35vw;
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 50%;
+    background-color: white;
+    border: 5px solid #eee;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(5em, 20vw, 6em); /* Make emoji large */
+    color: #555;
+    margin-bottom: 15px;
+}
+
+/* --- Find the Number --- */
+#find-the-number-screen { background-color: var(--bg-light-cyan); }
+#game-area {
+    width: 100%;
+    height: 70%;
+    position: relative;
+    overflow: hidden;
+}
+.number-image {
+    position: absolute;
+    width: 20vw;
+    max-width: 100px;
+    height: auto;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.number-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+}
+#hint-controls { display: flex; gap: 20px; }
+.control-button {
+    font-size: clamp(2em, 8vw, 2.5em);
+    background: #ffc107;
+    border: none;
+    border-radius: 50%;
+    width: 18vw;
+    height: 18vw;
+    max-width: 80px;
+    max-height: 80px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* --- Math Problems --- */
+#math-problems-screen { background-color: var(--bg-light-yellow); }
+#problem-container {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px 30px;
+    font-size: clamp(2em, 8vw, 3em);
+    font-weight: bold;
+    direction: ltr;
+}
+#answer-container {
+    min-height: 10vh;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    direction: ltr;
+}
+.answer-image {
+    width: 12vw;
+    max-width: 60px;
+    height: auto;
+    object-fit: contain;
+}
+#number-pad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    direction: ltr;
+}
+.number-pad-img {
+    width: 15vw;
+    max-width: 80px;
+}
+
+/* --- Collect Hearts --- */
+#collect-hearts-screen { background-color: var(--bg-light-pink); }
+#hearts-game-area {
+    width: 100%;
+    height: 60%;
+    position: relative;
+    overflow: hidden;
+}
+.heart {
+    position: absolute;
+    font-size: clamp(2.5em, 10vw, 3.5em);
+    cursor: pointer;
+    animation: rain 5s linear infinite;
+    user-select: none;
+    padding: 10px; /* Increase clickable area */
+    margin: -10px; /* Compensate for padding */
+}
+#collected-hearts-area {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--border-radius);
+    min-height: 12vh;
+    background: rgba(255,255,255,0.6);
+}
+#collected-hearts-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+.collected-heart { font-size: clamp(2em, 8vw, 2.5em); cursor: pointer; }
+
+/* --- Draw the Number --- */
+#draw-number-screen { background-color: var(--bg-light-blue); }
+#canvas-wrapper {
+    position: relative;
+    width: 90vw;
+    height: 60vw;
+    max-width: 500px;
+    max-height: 400px;
+    border-radius: var(--border-radius);
+    background: white;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+.trace-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.2;
+    pointer-events: none;
+}
+#drawing-canvas {
+    background: transparent;
+    cursor: crosshair;
+    touch-action: none;
+    width: 100%;
+    height: 100%;
+}
+#drawing-controls { display: flex; gap: 20px; }
+.action-button {
+    background: #4CAF50;
+    color: white;
+    padding: 15px 30px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+}
+#clear-canvas-button { background-color: #f44336; }
+
+/* --- Non-modal Feedback --- */
+#feedback-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8em;
+    pointer-events: none;
+    z-index: 1001;
+}
+.feedback-emoji {
+    animation: popAndFade 1.5s forwards;
+}
+#confetti-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* --- Animations --- */
+@keyframes popAndFade {
+    0% { transform: scale(0.5); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes rain {
+    from { transform: translateY(-10vh) rotate(0deg); }
+    to { transform: translateY(110vh) rotate(360deg); }
+}

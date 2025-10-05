@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>משחק חשבון</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app-container">
+        <!-- Splash Screen -->
+        <div id="splash-screen" class="screen active">
+            <div class="logo">🎨</div>
+            <h1>משחק חשבון</h1>
+        </div>
+
+        <!-- Participant Selection Screen -->
+        <div id="participant-selection-screen" class="screen">
+            <h2>בחר משתתף</h2>
+            <div id="participants-container">
+                <div class="participant-card" data-participant="Tamar">
+                    <div class="participant-avatar">
+                        👤
+                    </div>
+                    <p>תמר</p>
+                </div>
+                <div class="participant-card" data-participant="Yael">
+                    <div class="participant-avatar">
+                        👩
+                    </div>
+                    <p>יעל</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Find the Number Screen -->
+        <div id="find-the-number-screen" class="screen">
+            <div id="game-area"></div>
+            <div id="hint-controls">
+                <button id="speak-button" class="control-button">🔊</button>
+                <button id="show-card-button" class="control-button">🃏</button>
+            </div>
+        </div>
+
+        <!-- Math Problems Screen -->
+        <div id="math-problems-screen" class="screen">
+            <div id="problem-container"></div>
+            <div id="answer-container"></div>
+            <div id="number-pad"></div>
+        </div>
+
+        <!-- Collect Hearts Screen -->
+        <div id="collect-hearts-screen" class="screen">
+            <h2 id="hearts-instruction"></h2>
+            <div id="hearts-game-area"></div>
+            <div id="collected-hearts-area">
+                <div id="collected-hearts-container"></div>
+            </div>
+            <button id="finish-hearts-button" class="action-button">סיימתי</button>
+        </div>
+
+        <!-- Draw the Number Screen -->
+        <div id="draw-number-screen" class="screen">
+            <h2 id="draw-instruction"></h2>
+            <div id="canvas-wrapper">
+                 <img id="trace-image" class="trace-image" src="" alt="יש לעקוב אחר המספר">
+                 <canvas id="drawing-canvas"></canvas>
+            </div>
+            <div id="drawing-controls">
+                <button id="clear-canvas-button" class="action-button">נקה</button>
+                <button id="finish-drawing-button" class="action-button">סיימתי</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Non-modal feedback elements -->
+    <div id="feedback-container"></div>
+    <canvas id="confetti-canvas"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
