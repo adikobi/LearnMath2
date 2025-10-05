@@ -92,57 +92,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gameState.targetNumber = Math.floor(Math.random() * 10);
         const gameArea = document.getElementById('game-area');
-        gameArea.innerHTML = ''; // Clear previous game
+        gameArea.innerHTML = '';
         numbers = [];
 
+        // Show the screen first so elements have dimensions
         showScreen('find-the-number-screen');
 
-        const imagePromises = [];
-        for (let i = 0; i <= 9; i++) {
-            imagePromises.push(new Promise((resolve, reject) => {
-                const img = new Image();
-                img.src = `assets/${gameState.participant}/${i}.jpg`;
-                img.onload = () => resolve({img, number: i});
-                img.onerror = () => reject(new Error(`Failed to load image for number ${i}`));
-            }));
-        }
+        // Use requestAnimationFrame to wait for the DOM to be painted
+        requestAnimationFrame(() => {
+            const areaWidth = gameArea.clientWidth;
+            const areaHeight = gameArea.clientHeight;
 
-        Promise.all(imagePromises).then(loadedImages => {
-            loadedImages.forEach(({img, number}) => {
-                 const el = document.createElement('div');
-                 el.classList.add('number-image');
-                 el.dataset.number = number;
-                 el.appendChild(img);
-                 gameArea.appendChild(el);
-                 el.addEventListener('click', () => handleNumberClick(number, el));
-            });
+            if (areaWidth === 0 || areaHeight === 0) {
+                console.error("Game area has no dimensions. Something is wrong.");
+                return;
+            }
 
-            // Wait for the browser to paint the newly added elements
-            requestAnimationFrame(() => {
-                setTimeout(() => { // Add a small extra delay for safety
-                    const areaWidth = gameArea.clientWidth;
-                    const areaHeight = gameArea.clientHeight;
+            for (let i = 0; i <= 9; i++) {
+                const el = document.createElement('div');
+                el.classList.add('number-image');
+                el.dataset.number = i;
+                el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
+                gameArea.appendChild(el);
 
-                    document.querySelectorAll('.number-image').forEach(el => {
-                        const rect = el.getBoundingClientRect();
-                        if (rect.width > 0) { // Ensure element is rendered
-                            numbers.push({
-                                el,
-                                x: Math.random() * (areaWidth - rect.width),
-                                y: Math.random() * (areaHeight - rect.height),
-                                vx: (Math.random() - 0.5) * 2,
-                                vy: (Math.random() - 0.5) * 2,
-                                width: rect.width,
-                                height: rect.height,
-                            });
-                        }
-                    });
+                const rect = el.getBoundingClientRect();
 
-                    updateNumbersAnimation();
-                    setTimeout(() => speak(String(gameState.targetNumber)), 500);
-                }, 50); // 50ms delay
-            });
-        }).catch(error => console.error("Error preloading images:", error));
+                numbers.push({
+                    el,
+                    x: Math.random() * (areaWidth - rect.width),
+                    y: Math.random() * (areaHeight - rect.height),
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    width: rect.width,
+                    height: rect.height,
+                });
+
+                el.addEventListener('click', () => handleNumberClick(i, el));
+            }
+
+            updateNumbersAnimation();
+            setTimeout(() => speak(String(gameState.targetNumber)), 500);
+        });
     }
 
     function updateNumbersAnimation() {

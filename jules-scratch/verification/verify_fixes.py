@@ -18,8 +18,7 @@ async def main():
         await page.get_by_text("תמר").click()
 
         # Wait for the game area to be visible and populated
-        # Give it a generous timeout to allow for image preloading
-        await expect(page.locator("#game-area .number-image")).to_have_count(10, timeout=15000)
+        await expect(page.locator("#game-area .number-image")).to_have_count(10, timeout=10000)
 
         # Give a moment for numbers to start animating
         await page.wait_for_timeout(1500)
