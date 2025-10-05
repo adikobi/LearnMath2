@@ -138,6 +138,24 @@ img {
     align-items: center;
 }
 
+#hint-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1002; /* Above feedback emoji */
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 20px;
+    animation: popAndFade 2s forwards;
+}
+#hint-card img {
+    width: 40vw;
+    max-width: 200px;
+}
+
+
 /* --- Math Problems --- */
 #math-problems-screen { background-color: var(--bg-light-yellow); }
 #problem-container {
