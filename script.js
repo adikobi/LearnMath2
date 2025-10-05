@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupVoices() {
         if (!synth) return;
         let voices = synth.getVoices();
-        // Prioritize a high-quality Hebrew voice if available
         hebrewVoice = voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) || voices.find(v => v.lang === 'he-IL');
         console.log("Selected voice:", hebrewVoice ? hebrewVoice.name : "Default");
     }
