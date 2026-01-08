@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupVoices() {
         if (!synth) return;
         let voices = synth.getVoices();
-        // Prioritize a high-quality Hebrew voice if available
         hebrewVoice = voices.find(v => v.lang === 'he-IL' && v.name.includes('Google')) || voices.find(v => v.lang === 'he-IL');
         console.log("Selected voice:", hebrewVoice ? hebrewVoice.name : "Default");
     }
@@ -81,80 +80,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Game Logic ---
-    let animationFrameId = null;
+    let numberCreationInterval = null;
+    let fallingElements = [];
 
     function startFindTheNumber() {
-        // Stop any previous animations
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (numberCreationInterval) clearInterval(numberCreationInterval);
 
         gameState.targetNumber = Math.floor(Math.random() * 10);
         const gameArea = document.getElementById('game-area');
         gameArea.innerHTML = '';
-        const numbers = [];
-
-        // Create number elements with physics properties
-        for (let i = 0; i <= 9; i++) {
-            const el = document.createElement('div');
-            el.classList.add('number-image');
-            el.dataset.number = i;
-            el.innerHTML = `<img src="assets/${gameState.participant}/${i}.jpg" alt="${i}">`;
-            gameArea.appendChild(el);
-
-            numbers.push({
-                el,
-                x: Math.random() * (gameArea.clientWidth - el.clientWidth),
-                y: Math.random() * (gameArea.clientHeight - el.clientHeight),
-                vx: (Math.random() - 0.5) * 4, // Horizontal velocity
-                vy: (Math.random() - 0.5) * 4, // Vertical velocity
-                width: el.clientWidth,
-                height: el.clientHeight,
-            });
-
-            el.addEventListener('click', () => handleNumberClick(i, el));
-        }
-
-        // Animation loop
-        function update() {
-            const areaWidth = gameArea.clientWidth;
-            const areaHeight = gameArea.clientHeight;
-
-            numbers.forEach(n => {
-                // Move
-                n.x += n.vx;
-                n.y += n.vy;
-
-                // Bounce off walls
-                if (n.x <= 0 || n.x + n.width >= areaWidth) n.vx *= -1;
-                if (n.y <= 0 || n.y + n.height >= areaHeight) n.vy *= -1;
-
-                // Clamp position to stay within bounds
-                n.x = Math.max(0, Math.min(n.x, areaWidth - n.width));
-                n.y = Math.max(0, Math.min(n.y, areaHeight - n.height));
-
-                n.el.style.transform = `translate(${n.x}px, ${n.y}px)`;
-            });
-
-            animationFrameId = requestAnimationFrame(update);
-        }
+        fallingElements = [];
 
         showScreen('find-the-number-screen');
+
+        // Create a few numbers immediately
+        for(let i = 0; i < 5; i++) {
+            createFallingNumber(gameArea);
+        }
+        // Then create more over time
+        numberCreationInterval = setInterval(() => createFallingNumber(gameArea), 800);
+
         setTimeout(() => speak(String(gameState.targetNumber)), 500);
-        update();
+    }
+
+    function createFallingNumber(container) {
+        const number = Math.floor(Math.random() * 10);
+        const el = document.createElement('div');
+        el.classList.add('number-image');
+        // Use the same animation as the hearts
+        el.style.animation = `rain ${5 + Math.random() * 5}s linear`;
+        el.style.left = `${Math.random() * 90}%`;
+        el.style.transform = `scale(${0.8 + Math.random() * 0.4})`;
+
+        el.innerHTML = `<img src="assets/${gameState.participant}/${number}.jpg" alt="${number}">`;
+        el.dataset.number = number;
+
+        el.addEventListener('click', () => handleNumberClick(number, el));
+
+        container.appendChild(el);
+        fallingElements.push(el);
+
+        // Clean up element when animation ends to prevent DOM clutter
+        el.addEventListener('animationend', () => {
+            el.remove();
+            const index = fallingElements.indexOf(el);
+            if (index > -1) {
+                fallingElements.splice(index, 1);
+            }
+        });
     }
 
     async function handleNumberClick(clickedNumber, element) {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-
         if (clickedNumber === gameState.targetNumber) {
+            if (numberCreationInterval) clearInterval(numberCreationInterval);
+
+            fallingElements.forEach(el => {
+                // Stop all other animations
+                el.style.animationPlayState = 'paused';
+                if (el !== element) {
+                   el.style.opacity = '0.2';
+                }
+            });
+
+            element.classList.add('correct-guess');
+
             triggerConfetti();
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 2000));
             startMathProblems();
         } else {
             showFeedback('❌');
             element.style.animation = 'shake 0.5s';
             setTimeout(() => {
                 element.style.animation = '';
-                animationFrameId = requestAnimationFrame(update);
             }, 500);
         }
     }
@@ -312,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapper = document.getElementById('canvas-wrapper');
         let isDrawing = false;
         let hue = 0;
+        let resizeHandler = null; // To keep track of the listener
 
         // --- Setup ---
         document.getElementById('draw-instruction').textContent = `עכשיו, בוא נצייר את המספר ${gameState.targetNumber}!`;
@@ -319,17 +317,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Canvas Sizing ---
         function resizeCanvas() {
+            // Clear previous drawing on resize
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = wrapper.clientWidth * dpr;
-            canvas.height = wrapper.clientHeight * dpr;
+            const rect = wrapper.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+
             ctx.scale(dpr, dpr);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = 12; // A bit thicker for better feel
+            ctx.lineWidth = 12;
         }
 
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // Show screen first to get dimensions
+        showScreen('draw-number-screen');
+
+        // Defer canvas sizing until after the screen is visible
+        requestAnimationFrame(() => {
+            resizeCanvas();
+            // Assign the handler function to a variable so it can be removed later
+            resizeHandler = resizeCanvas;
+            window.addEventListener('resize', resizeHandler);
+        });
+
 
         // --- Drawing Logic ---
         function getEventPosition(e) {
@@ -377,13 +389,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('finish-drawing-button').onclick = async () => {
             // Cleanup listeners to prevent memory leaks when stage restarts
-            window.removeEventListener('resize', resizeCanvas);
+            if (resizeHandler) {
+                window.removeEventListener('resize', resizeHandler);
+            }
             triggerConfetti();
             await new Promise(r => setTimeout(r, 1500));
             showScreen('participant-selection-screen');
         };
+    }
 
-        showScreen('draw-number-screen');
+    function showHintCard() {
+        if (document.getElementById('hint-card')) return;
+
+        const hintCard = document.createElement('div');
+        hintCard.id = 'hint-card';
+        hintCard.innerHTML = `<img src="assets/${gameState.participant}/${gameState.targetNumber}.jpg" alt="Hint: ${gameState.targetNumber}">`;
+
+        document.getElementById('app-container').appendChild(hintCard);
+
+        setTimeout(() => {
+            if (hintCard) {
+                hintCard.remove();
+            }
+        }, 2000);
     }
 
     // --- App Initialization ---
@@ -398,6 +426,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 startFindTheNumber();
             });
         });
+
+        // Event listeners for Find the Number controls
+        document.getElementById('speak-button').addEventListener('click', () => {
+            if (gameState.targetNumber !== null) {
+                speak(String(gameState.targetNumber));
+            }
+        });
+
+        document.getElementById('show-card-button').addEventListener('click', showHintCard);
 
         document.getElementById('finish-hearts-button').addEventListener('click', async () => {
             if (gameState.heartsGame.rainInterval) clearInterval(gameState.heartsGame.rainInterval);

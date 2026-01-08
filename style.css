@@ -7,7 +7,7 @@
     --bg-light-yellow: #fff9c4;
     --bg-light-cyan: #e0f7fa;
     --bg-light-gray: #f5f5f5;
-    --border-radius: 15px;
+    --border-radius: 25px;
 }
 
 * {
@@ -71,8 +71,16 @@ img {
 
 /* --- Splash Screen --- */
 #splash-screen {
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    background: linear-gradient(135deg, #6e8efb, #a777e3, #f09ae9, #6e8efb);
     color: white;
+    animation: gradientShift 15s ease infinite;
+    background-size: 400% 400%;
+}
+
+#splash-screen .logo {
+    font-size: clamp(6em, 25vw, 8em);
+    animation: pulse 2.5s infinite ease-in-out;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
 }
 
 /* --- Participant Selection --- */
@@ -94,9 +102,16 @@ img {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: clamp(5em, 20vw, 6em); /* Make emoji large */
+    font-size: clamp(5em, 20vw, 6em); /* Keep for potential fallback */
     color: #555;
     margin-bottom: 15px;
+    overflow: hidden; /* Hide overflowing parts of the image */
+}
+
+.participant-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Crop image to fit the circle */
 }
 
 /* --- Find the Number --- */
@@ -111,15 +126,23 @@ img {
     position: absolute;
     width: 20vw;
     max-width: 100px;
-    height: auto;
+    height: 20vw; /* Match width to create a square aspect ratio */
+    max-height: 100px; /* Match max-width */
     cursor: pointer;
-    transition: transform 0.2s;
+    user-select: none;
+}
+
+.correct-guess {
+    transform: scale(1.2);
+    box-shadow: 0 0 20px gold;
+    z-index: 10;
+    animation: none !important;
 }
 .number-image img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: var(--border-radius);
+    border-radius: 50%; /* Make them circular for a very soft look */
 }
 #hint-controls { display: flex; gap: 20px; }
 .control-button {
@@ -137,6 +160,24 @@ img {
     justify-content: center;
     align-items: center;
 }
+
+#hint-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1002; /* Above feedback emoji */
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 20px;
+    animation: popAndFade 2s forwards;
+}
+#hint-card img {
+    width: 40vw;
+    max-width: 200px;
+}
+
 
 /* --- Math Problems --- */
 #math-problems-screen { background-color: var(--bg-light-yellow); }
@@ -283,4 +324,16 @@ img {
 @keyframes rain {
     from { transform: translateY(-10vh) rotate(0deg); }
     to { transform: translateY(110vh) rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
