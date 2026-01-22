@@ -339,8 +339,8 @@ button:active {
 
 #canvas-wrapper {
     position: relative;
-    width: 90vw;
-    height: 70vw; /* Increased height ratio */
+    width: 90vmin;
+    height: 70vmin;
     max-width: 500px;
     max-height: 400px;
     border-radius: 30px;

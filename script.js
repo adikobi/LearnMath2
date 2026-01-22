@@ -316,29 +316,41 @@ document.addEventListener('DOMContentLoaded', () => {
         heartEl.remove();
     }
 
+    // Global drawing state to prevent listener stacking
+    let drawingState = {
+        isDrawing: false,
+        hue: 0,
+        cleanupListeners: null
+    };
+
     function startDrawTheNumber() {
         const canvas = document.getElementById('drawing-canvas');
         const ctx = canvas.getContext('2d');
         const traceImage = document.getElementById('trace-image');
         const wrapper = document.getElementById('canvas-wrapper');
-        let isDrawing = false;
-        let hue = 0;
-        let resizeHandler = null; // To keep track of the listener
+        let resizeHandler = null;
+
+        // Cleanup previous listeners if any
+        if (drawingState.cleanupListeners) {
+            drawingState.cleanupListeners();
+        }
 
         // --- Setup ---
         document.getElementById('draw-instruction').textContent = `עכשיו, בוא נצייר את המספר ${gameState.targetNumber}!`;
         traceImage.src = `assets/${gameState.participant}/${gameState.targetNumber}.jpg`;
+        drawingState.isDrawing = false;
+        drawingState.hue = 0;
 
         // --- Canvas Sizing ---
         function resizeCanvas() {
-            // Clear previous drawing on resize
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             const dpr = window.devicePixelRatio || 1;
             const rect = wrapper.getBoundingClientRect();
+
+            // Set canvas internal dimensions to match DOM size * DPR
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
 
+            // Reset context properties after resize (canvas clear resets state)
             ctx.scale(dpr, dpr);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -348,40 +360,45 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show screen first to get dimensions
         showScreen('draw-number-screen', () => {
             resizeCanvas();
-            // Assign the handler function to a variable so it can be removed later
             resizeHandler = resizeCanvas;
             window.addEventListener('resize', resizeHandler);
         });
 
-
         // --- Drawing Logic ---
         function getEventPosition(e) {
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            // Handle both touch and mouse events
+            let clientX, clientY;
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
         function start(e) {
             e.preventDefault();
-            isDrawing = true;
+            drawingState.isDrawing = true;
             const { x, y } = getEventPosition(e);
             ctx.beginPath();
             ctx.moveTo(x, y);
         }
 
         function draw(e) {
-            if (!isDrawing) return;
+            if (!drawingState.isDrawing) return;
             e.preventDefault();
             const { x, y } = getEventPosition(e);
-            ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-            hue = (hue + 1) % 360;
+            ctx.strokeStyle = `hsl(${drawingState.hue}, 100%, 50%)`;
+            drawingState.hue = (drawingState.hue + 1) % 360;
             ctx.lineTo(x, y);
             ctx.stroke();
         }
 
         function stop() {
-            isDrawing = false;
+            drawingState.isDrawing = false;
         }
 
         // --- Event Listeners ---
@@ -393,15 +410,34 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stop);
 
+        // Store cleanup function
+        drawingState.cleanupListeners = () => {
+            canvas.removeEventListener('mousedown', start);
+            canvas.removeEventListener('mousemove', draw);
+            canvas.removeEventListener('mouseup', stop);
+            canvas.removeEventListener('mouseout', stop);
+            canvas.removeEventListener('touchstart', start);
+            canvas.removeEventListener('touchmove', draw);
+            canvas.removeEventListener('touchend', stop);
+            if (resizeHandler) {
+                window.removeEventListener('resize', resizeHandler);
+            }
+        };
+
         // --- Button Controls ---
+        // We use .onclick replacement to avoid stacking listeners on buttons
         document.getElementById('clear-canvas-button').onclick = () => {
+             // Clear the canvas while preserving transform
+             ctx.save();
+             ctx.setTransform(1, 0, 0, 1, 0, 0);
              ctx.clearRect(0, 0, canvas.width, canvas.height);
+             ctx.restore();
         };
 
         document.getElementById('finish-drawing-button').onclick = async () => {
-            // Cleanup listeners to prevent memory leaks when stage restarts
-            if (resizeHandler) {
-                window.removeEventListener('resize', resizeHandler);
+            if (drawingState.cleanupListeners) {
+                drawingState.cleanupListeners();
+                drawingState.cleanupListeners = null;
             }
             triggerConfetti();
             await new Promise(r => setTimeout(r, 1500));
