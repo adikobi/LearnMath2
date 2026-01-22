@@ -55,9 +55,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Core Functions ---
-    function showScreen(screenId) {
-        screens.forEach(screen => screen.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
+    function showScreen(screenId, onShown) {
+        const activeScreen = document.querySelector('.screen.active');
+        const newScreen = document.getElementById(screenId);
+
+        if (activeScreen && activeScreen !== newScreen) {
+            activeScreen.classList.remove('active');
+            activeScreen.classList.add('closing');
+
+            setTimeout(() => {
+                activeScreen.classList.remove('closing');
+                newScreen.classList.add('active');
+                if (onShown) onShown();
+            }, 500); // Wait for fade out
+        } else {
+            newScreen.classList.add('active');
+            if (onShown) onShown();
+        }
     }
 
     function triggerConfetti() {
@@ -332,10 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Show screen first to get dimensions
-        showScreen('draw-number-screen');
-
-        // Defer canvas sizing until after the screen is visible
-        requestAnimationFrame(() => {
+        showScreen('draw-number-screen', () => {
             resizeCanvas();
             // Assign the handler function to a variable so it can be removed later
             resizeHandler = resizeCanvas;
